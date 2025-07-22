@@ -1,88 +1,80 @@
-import React, { useState, useEffect } from 'react';
-import './App.css';
+import React, { useEffect, useRef, useState } from "react";
 
-function App() {
-  const [position, setPosition] = useState(null);
-  const [entryPrice, setEntryPrice] = useState(null);
+const App = () => {
+  const chartRef = useRef(null);
+  const [price, setPrice] = useState(0);
   const [pnl, setPnl] = useState(0);
   const [tradeHistory, setTradeHistory] = useState([]);
-  const [livePrice, setLivePrice] = useState(0);
+  const [entryPrice, setEntryPrice] = useState(null);
 
-  // 🧠 Connect to Binance WebSocket for live BTC price
   useEffect(() => {
-    const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+    const widget = new window.TradingView.widget({
+      container_id: "tvchart",
+      symbol: "CBOE:AAPL",
+      interval: "1",
+      theme: "light",
+      style: "1",
+      locale: "en",
+      toolbar_bg: "#f1f3f6",
+      hide_side_toolbar: false,
+      withdateranges: true,
+      enable_publishing: false,
+      allow_symbol_change: true,
+      autosize: true,
+    });
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setLivePrice(parseFloat(data.p));
-    };
+    widget.onChartReady(() => {
+      const symbol = widget.activeChart().symbol();
+      widget.activeChart().onDataLoaded().subscribe(null, () => {
+        widget.activeChart().onSymbolChanged().subscribe(null, () => {
+          setPrice(0);
+        });
 
-    return () => ws.close(); // Cleanup on unmount
+        widget.activeChart().onRealtimeUpdate().subscribe(null, () => {
+          const lastBar = widget.activeChart()._model._mainSeries._bars._items.slice(-1)[0];
+          if (lastBar && lastBar.v && lastBar.v[4]) {
+            setPrice(lastBar.v[4]);
+          }
+        });
+      });
+    });
   }, []);
 
-  function handleBuy() {
-    if (!position) {
-      setPosition("long");
-      setEntryPrice(livePrice);
-      addTrade("Buy", livePrice);
-    }
-  }
+  const handleBuy = () => {
+    const time = new Date().toLocaleTimeString();
+    setTradeHistory((prev) => [...prev, `${time} — Buy @ ₹${price.toFixed(2)}`]);
+    setEntryPrice(price);
+  };
 
-  function handleSell() {
-    if (position === "long") {
-      const profit = livePrice - entryPrice;
-      setPnl(prev => prev + profit);
-      setPosition(null);
-      setEntryPrice(null);
-      addTrade("Sell", livePrice);
+  const handleSell = () => {
+    const time = new Date().toLocaleTimeString();
+    setTradeHistory((prev) => [...prev, `${time} — Sell @ ₹${price.toFixed(2)}`]);
+    if (entryPrice !== null) {
+      const profit = price - entryPrice;
+      setPnl((prev) => prev + profit);
     }
-  }
-
-  function addTrade(type, price) {
-    setTradeHistory(prev => [
-      ...prev,
-      {
-        type,
-        price: price.toFixed(2),
-        time: new Date().toLocaleTimeString()
-      }
-    ]);
-  }
+  };
 
   return (
-    <div className="container">
-      <h1>Trading Chart Demo</h1>
-
-      <iframe
-        title="TradingView Widget"
-        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_7e6e3&symbol=BINANCE:BTCUSDT&interval=5&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Etc/UTC&withdateranges=1&hidevolume=1&hidelegend=1&hideideas=1&enabled_features=[]&disabled_features=[]&locale=en&utm_source=aviral.vercel.app"
-        width="100%"
-        height="400"
-        frameBorder="0"
-        allowTransparency
-        scrolling="no"
-      ></iframe>
-
-      <div className="price-info">
-        <p>Live Price (BTCUSDT): ₹{livePrice.toFixed(2)}</p>
-        <p>Current PnL: ₹{pnl.toFixed(2)}</p>
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
+      <h1 className="text-3xl font-bold mb-6">Trading Chart Demo</h1>
+      <div id="tvchart" ref={chartRef} className="w-full max-w-4xl h-[500px] mb-4"></div>
+      <div className="mb-4 text-xl">Current Price: ₹{price.toFixed(2)}</div>
+      <div className="mb-4 text-xl">Current PnL: ₹{pnl.toFixed(2)}</div>
+      <div className="space-x-4 mb-6">
+        <button onClick={handleBuy} className="px-4 py-2 bg-blue-500 text-white rounded">Buy</button>
+        <button onClick={handleSell} className="px-4 py-2 bg-red-500 text-white rounded">Sell</button>
       </div>
-
-      <div className="btns">
-        <button onClick={handleBuy} className="buy">Buy</button>
-        <button onClick={handleSell} className="sell">Sell</button>
+      <div className="text-left w-full max-w-md">
+        <h2 className="text-xl font-semibold mb-2">Trade History</h2>
+        <ul className="list-disc list-inside">
+          {tradeHistory.map((entry, idx) => (
+            <li key={idx}>{entry}</li>
+          ))}
+        </ul>
       </div>
-
-      <h3>Trade History</h3>
-      <ul className="history">
-        {tradeHistory.map((trade, index) => (
-          <li key={index}>
-            {trade.time} — {trade.type} @ ₹{trade.price}
-          </li>
-        ))}
-      </ul>
     </div>
   );
-}
+};
 
 export default App;
