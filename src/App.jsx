@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
@@ -6,25 +6,35 @@ function App() {
   const [entryPrice, setEntryPrice] = useState(null);
   const [pnl, setPnl] = useState(0);
   const [tradeHistory, setTradeHistory] = useState([]);
+  const [livePrice, setLivePrice] = useState(0);
 
-  // Fake current price - later link it to actual chart
-  const [currentPrice, setCurrentPrice] = useState(3750 + Math.random() * 100);
+  // 🧠 Connect to Binance WebSocket for live BTC price
+  useEffect(() => {
+    const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setLivePrice(parseFloat(data.p));
+    };
+
+    return () => ws.close(); // Cleanup on unmount
+  }, []);
 
   function handleBuy() {
     if (!position) {
       setPosition("long");
-      setEntryPrice(currentPrice);
-      addTrade("Buy", currentPrice);
+      setEntryPrice(livePrice);
+      addTrade("Buy", livePrice);
     }
   }
 
   function handleSell() {
     if (position === "long") {
-      const profit = currentPrice - entryPrice;
+      const profit = livePrice - entryPrice;
       setPnl(prev => prev + profit);
       setPosition(null);
       setEntryPrice(null);
-      addTrade("Sell", currentPrice);
+      addTrade("Sell", livePrice);
     }
   }
 
@@ -45,7 +55,7 @@ function App() {
 
       <iframe
         title="TradingView Widget"
-        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_7e6e3&symbol=NASDAQ:AAPL&interval=5&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Etc/UTC&withdateranges=1&hidevolume=1&hidelegend=1&hideideas=1&enabled_features=[]&disabled_features=[]&locale=en&utm_source=aviral.vercel.app"
+        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_7e6e3&symbol=BINANCE:BTCUSDT&interval=5&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Etc/UTC&withdateranges=1&hidevolume=1&hidelegend=1&hideideas=1&enabled_features=[]&disabled_features=[]&locale=en&utm_source=aviral.vercel.app"
         width="100%"
         height="400"
         frameBorder="0"
@@ -54,7 +64,7 @@ function App() {
       ></iframe>
 
       <div className="price-info">
-        <p>Current Price: ₹{currentPrice.toFixed(2)}</p>
+        <p>Live Price (BTCUSDT): ₹{livePrice.toFixed(2)}</p>
         <p>Current PnL: ₹{pnl.toFixed(2)}</p>
       </div>
 
