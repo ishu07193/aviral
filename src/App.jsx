@@ -1,50 +1,78 @@
-import React, { useEffect, useRef } from 'react';
-import { createChart } from 'lightweight-charts';
+import React, { useState } from 'react';
+import './App.css';
 
-export default function App() {
-  const chartContainerRef = useRef();
+function App() {
+  const [position, setPosition] = useState(null);
+  const [entryPrice, setEntryPrice] = useState(null);
+  const [pnl, setPnl] = useState(0);
+  const [tradeHistory, setTradeHistory] = useState([]);
 
-  useEffect(() => {
-    const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: 400,
-      layout: { background: { color: '#ffffff' }, textColor: '#333' },
-      grid: { vertLines: { color: '#eee' }, horzLines: { color: '#eee' } },
-    });
+  // Fake current price - later link it to actual chart
+  const [currentPrice, setCurrentPrice] = useState(3750 + Math.random() * 100);
 
-    const candlestickSeries = chart.addCandlestickSeries();
+  function handleBuy() {
+    if (!position) {
+      setPosition("long");
+      setEntryPrice(currentPrice);
+      addTrade("Buy", currentPrice);
+    }
+  }
 
-    candlestickSeries.setData([
-      { time: '2025-07-22', open: 3720, high: 3750, low: 3700, close: 3740 },
-      { time: '2025-07-23', open: 3740, high: 3760, low: 3730, close: 3745 },
-      { time: '2025-07-24', open: 3745, high: 3780, low: 3740, close: 3775 },
-      { time: '2025-07-25', open: 3775, high: 3790, low: 3750, close: 3760 },
+  function handleSell() {
+    if (position === "long") {
+      const profit = currentPrice - entryPrice;
+      setPnl(prev => prev + profit);
+      setPosition(null);
+      setEntryPrice(null);
+      addTrade("Sell", currentPrice);
+    }
+  }
+
+  function addTrade(type, price) {
+    setTradeHistory(prev => [
+      ...prev,
+      {
+        type,
+        price: price.toFixed(2),
+        time: new Date().toLocaleTimeString()
+      }
     ]);
-
-    const handleResize = () => {
-      chart.applyOptions({ width: chartContainerRef.current.clientWidth });
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-    };
-  }, []);
-
-  const handleTrade = (type) => {
-    alert(`${type} order placed (demo)`);
-  };
+  }
 
   return (
-    <div style={{ maxWidth: '900px', margin: 'auto', padding: '20px' }}>
-      <h1 style={{ fontSize: '24px', marginBottom: '10px' }}>Trading Chart Demo</h1>
-      <div ref={chartContainerRef} style={{ marginBottom: '20px' }} />
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
-        <button onClick={() => handleTrade('Buy')} style={{ background: 'green', color: 'white', padding: '10px 20px' }}>Buy</button>
-        <button onClick={() => handleTrade('Sell')} style={{ background: 'red', color: 'white', padding: '10px 20px' }}>Sell</button>
+    <div className="container">
+      <h1>Trading Chart Demo</h1>
+
+      <iframe
+        title="TradingView Widget"
+        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_7e6e3&symbol=NASDAQ:AAPL&interval=5&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Etc/UTC&withdateranges=1&hidevolume=1&hidelegend=1&hideideas=1&enabled_features=[]&disabled_features=[]&locale=en&utm_source=aviral.vercel.app"
+        width="100%"
+        height="400"
+        frameBorder="0"
+        allowTransparency
+        scrolling="no"
+      ></iframe>
+
+      <div className="price-info">
+        <p>Current Price: ₹{currentPrice.toFixed(2)}</p>
+        <p>Current PnL: ₹{pnl.toFixed(2)}</p>
       </div>
+
+      <div className="btns">
+        <button onClick={handleBuy} className="buy">Buy</button>
+        <button onClick={handleSell} className="sell">Sell</button>
+      </div>
+
+      <h3>Trade History</h3>
+      <ul className="history">
+        {tradeHistory.map((trade, index) => (
+          <li key={index}>
+            {trade.time} — {trade.type} @ ₹{trade.price}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
+
+export default App;
