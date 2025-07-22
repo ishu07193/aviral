@@ -62,8 +62,12 @@ const App = () => {
       <div className="mb-4 text-xl">Current Price: ₹{price.toFixed(2)}</div>
       <div className="mb-4 text-xl">Current PnL: ₹{pnl.toFixed(2)}</div>
       <div className="space-x-4 mb-6">
-        <button onClick={handleBuy} className="px-4 py-2 bg-blue-500 text-white rounded">Buy</button>
-        <button onClick={handleSell} className="px-4 py-2 bg-red-500 text-white rounded">Sell</button>
+        <button onClick={handleBuy} className="px-4 py-2 bg-blue-500 text-white rounded">
+          Buy
+        </button>
+        <button onClick={handleSell} className="px-4 py-2 bg-red-500 text-white rounded">
+          Sell
+        </button>
       </div>
       <div className="text-left w-full max-w-md">
         <h2 className="text-xl font-semibold mb-2">Trade History</h2>
